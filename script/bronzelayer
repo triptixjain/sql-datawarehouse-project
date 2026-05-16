@@ -1,0 +1,131 @@
+/*EXEC xp_fileexist 'C:\Temp\cust_info.csv';
+EXEC xp_fileexist 'C:\Temp\prd_info';
+EXEC xp_fileexist 'C:\Temp\cust_az12.csv'; */
+create or alter procedure bronze.load_bronze as
+begin 
+declare @batchstart datetime, @starttime datetime, @endtime datetime, @batch_end datetime
+    begin try
+        set @batchstart = getdate()
+        print '================================================='
+        print 'loading bronze layer'
+        print '================================================='
+
+        print'**************************************************'
+        print'loading crm tables'
+  
+
+         set @starttime=getdate();
+        print'>> truncating table:  bronze.crm_cust_info'
+        truncate table bronze.crm_cust_info
+
+        print'>>  loading table : bronze.crm_cust_info' 
+        BULK INSERT bronze.crm_cust_info
+        FROM 'C:\Temp\cust_info.csv'
+        WITH (
+            FIRSTROW = 2,
+            FIELDTERMINATOR = ',',
+            ROWTERMINATOR = '\n',
+            TABLOCK
+        );
+        set @endtime=getdate();
+        print'>> load duration : ' + cast(datediff(second,@starttime,@endtime) as nvarchar) + 'seconds';
+        print'>>>>>>>>>>>>>>>'
+
+        print'>> truncating table:  bronze.crm_prd_info'
+        set @starttime=getdate();
+        truncate table bronze.crm_prd_info;
+        print'>>  loading table : bronze.crm_prd_info'
+        bulk insert bronze.crm_prd_info
+        from 'C:\Temp\prd_info.csv'
+        with(
+            firstrow=2,
+            fieldterminator=',',
+            rowterminator='\n',
+            tablock
+            );
+set @endtime=getdate();
+        print'>> load duration : ' + cast(datediff(second,@starttime,@endtime) as nvarchar) + 'seconds';
+        print'>>>>>>>>>>>>>>>'
+
+        print'>> truncating table: bronze.crm_sales_details '
+        truncate table bronze.crm_sales_details;
+        set @starttime=getdate();
+        bulk insert bronze.crm_sales_details
+        from 'C:\Temp\sales_details.csv'
+        with(
+            firstrow=2,
+            fieldterminator=',',
+            rowterminator='\n',
+            tablock
+            );
+            set @endtime=getdate();
+        print'>> load duration : ' + cast(datediff(second,@starttime,@endtime) as nvarchar) + 'seconds';
+        print'>>>>>>>>>>>>>>>'
+
+        print'**************************************************'
+        print'loading erp tables'
+        print'**************************************************'
+    
+        print'>> truncating table: bronze.erp_cust_az12 '
+        set @starttime=getdate();
+        truncate table bronze.erp_cust_az12;
+        bulk insert bronze.erp_cust_az12
+        from 'C:\Temp\cust_az12.csv'
+        with(
+            firstrow=2,
+            fieldterminator=',',
+            rowterminator='\n',
+            tablock
+            ); 
+        set @endtime=getdate();
+        print'>> load duration : ' + cast(datediff(second,@starttime,@endtime) as nvarchar) + 'seconds';
+        print'>>>>>>>>>>>>>>>'
+
+        print'>> truncating table: bronze.erp_loc_a101 '
+        set @starttime=getdate();
+        truncate table bronze.erp_loc_a101;
+        bulk insert bronze.erp_loc_a101
+        from 'C:\Temp\loc_a101.csv'
+        with(
+            firstrow=2,
+            fieldterminator=',',
+            rowterminator='\n',
+            tablock
+            );
+        set @endtime=getdate();
+        print'>> load duration : ' + cast(datediff(second,@starttime,@endtime) as nvarchar) + 'seconds';
+        print'>>>>>>>>>>>>>>>'
+
+
+         print'>> truncating table: bronze.erp_px_cat_g1v2'
+         set @starttime=getdate();
+        truncate table bronze.erp_px_cat_g1v2;
+        bulk insert bronze.erp_px_cat_g1v2
+        from 'C:\Temp\px_cat_g1v2.csv'
+        with(
+            firstrow=2,
+            fieldterminator=',',
+            rowterminator='\n',
+            tablock)
+            set @endtime=getdate();
+
+        print'>> load duration : ' + cast(datediff(second,@starttime,@endtime) as nvarchar) + 'seconds';
+        print'>>>>>>>>>>>>>>>'
+         set @batch_end = getdate();
+        print'===================================='
+        print'loading bronze layer is completed'
+        print 'total duration:' + cast(datediff(second,@batchstart,@batch_end) as nvarchar) + 'seconds'
+            
+      end  try
+      begin catch
+        print'==========================='
+        print'error occured during bronze layer'
+        print 'error message' + error_message();
+        print 'error number' + cast(error_number() as nvarchar);
+        print 'error state' + cast(error_state() as nvarchar);
+        print '=========================='
+
+      end catch
+end
+
+exec bronze.load_bronze
